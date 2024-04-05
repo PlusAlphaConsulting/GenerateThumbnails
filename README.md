@@ -4,7 +4,7 @@ platforms: dotnet
 author: xpouyat
 ---
 
-# Generates thumbnails for a video using Azure Functions
+# An Azure function that generates thumbnails from a video
 
 This Visual Studio 2022 / VS Code Solution exposes an Azure Function that create thumbnail(s) using ffmpeg.
 
@@ -38,7 +38,7 @@ Example JSON input body of the function :
 }
 ```
 
-A SAS url is needed for the input and output URLs. The SAS token should have read/write permissions. A SAS token can be generated from the Azure portal or using the Azure Storage Explorer. I am planning to add the ability to generate SAS tokens in the function itself.
+A SAS url is needed for the input and output URLs. The output SAS token should have read/write permissions. A SAS token can be generated from the Azure portal or using the Azure Storage Explorer. I am planning to add the ability to generate SAS tokens in the function itself.
 
 By default, the function generates one 960x540 thumbnail. You can change the number of thumbnails or sizes by adding and modifying the ffmpeg arguments in input body:
 
