@@ -6,7 +6,9 @@ author: xpouyat
 
 # An Azure function that generates thumbnails from a video
 
-This Visual Studio 2022 / VS Code Solution exposes an Azure Function that create thumbnail(s) using ffmpeg.
+This Visual Studio 2022 / VS Code Solution exposes an Azure Function that creates thumbnail(s) using ffmpeg.
+
+Ffmpeg will read directly the video file from Azure blob storage, generate the thumbnail(s) and upload them to a storage container. This function could be used to generate thumbnails with MediaKind MK/IO, for example.
 
 ## How to publish the function to Azure
 
@@ -50,10 +52,10 @@ By default, the function generates one 960x540 thumbnail. You can change the num
 }
 ```
 
-This parameters will generate 5 thumbnails from the first 100 frames.
+This parameter will generate 5 thumbnails from the first 100 frames :
 
 ```
 " -i {input} -vf thumbnail=n=100,scale=960:540 -frames:v 5 {tempFolder}\\Thumbnail%06d.jpg"
 ```
 
-For more information on thumbnail generation, see [this page](https://trac.ffmpeg.org/wiki/Create%20a%20thumbnail%20image%20every%20X%20seconds%20of%20the%20video).
+For more information about thumbnail generation, see [this page](https://trac.ffmpeg.org/wiki/Create%20a%20thumbnail%20image%20every%20X%20seconds%20of%20the%20video).
