@@ -15,6 +15,7 @@ namespace GenerateThumbnails
 {
     public class GenerateThumbnails
     {
+        // default parameter for generating thumbnail(s) if not provided in the body
         private const string DefaultParameterGenerateThumbnail = " -i {input} -vf thumbnail=n=100,scale=960:540 -frames:v 1 {tempFolder}\\Thumbnail%06d.jpg";
 
         private readonly ILogger _logger;
@@ -27,7 +28,7 @@ namespace GenerateThumbnails
         //
         // 
         //
-        // ffmpeg -  This function generates a thumbnail with ffmpeg.
+        // This Azure function generates thumbnail(s) from a file file using ffmpeg.
         //
         /*
         ```c#
@@ -35,24 +36,14 @@ namespace GenerateThumbnails
         {
             "inputUrl":"",
             "outputUrl":"",
-            "ffmpegArguments" : " -i {input} -vf thumbnail=n=100,scale=960:540 -frames:v 1 {tempFolder}\\Thumbnail%06d.jpg"  // optional. This one generates 1 thumbnail from the first 100 frames in format 960x540
+            "ffmpegArguments" : " -i {input} -vf thumbnail=n=100,scale=960:540 -frames:v 1 {tempFolder}\\Thumbnail%06d.jpg"  // optional. This parameter generates 1 thumbnail from the first 100 frames in format 960x540
         }
-
-
         ```
         */
+
         [Function("GenerateThumbnails")]
         public IActionResult Run([HttpTrigger(AuthorizationLevel.Function, "get", "post")] HttpRequestData req, ExecutionContext context)
         {
-            /*   _logger.LogInformation("C# HTTP trigger function processed a request.");
-
-               var response = req.CreateResponse(HttpStatusCode.OK);
-               response.Headers.Add("Content-Type", "text/plain; charset=utf-8");
-
-               response.WriteString("Welcome to Azure Functions!");
-
-               return response;*/
-
             string output = string.Empty;
             bool isSuccessful = true;
             dynamic ffmpegResult = new JObject();
@@ -86,7 +77,6 @@ namespace GenerateThumbnails
             try
             {
                 var folder = Environment.GetEnvironmentVariable("HOME") + @"\site\wwwroot";
-                // var folder = context.FunctionDirectory;
                 var tempFolder = Path.Combine(Path.GetTempPath(), HelpersBasic.GenerateUniqueName("thumbnails"));
 
                 // create temp folder
@@ -103,7 +93,6 @@ namespace GenerateThumbnails
                 }
 
                 _logger.LogInformation("Generate thumbnail(s)...");
-                //var file = System.IO.Path.Combine(folder, "..\\ffmpeg\\ffmpeg.exe");
                 var file = ".\\ffmpeg\\ffmpeg.exe";
 
                 Process process = new Process();
@@ -111,9 +100,7 @@ namespace GenerateThumbnails
 
                 process.StartInfo.Arguments = (ffmpegArguments ?? DefaultParameterGenerateThumbnail)
                     .Replace("{input}", "\"" + inputUrl + "\"")
-                    //.Replace("{tempFolder}", "\"" + tempFolder + "\"")
                     .Replace("{tempFolder}", tempFolder)
-
                     .Replace("'", "\"");
 
                 _logger.LogInformation(process.StartInfo.Arguments);
@@ -134,7 +121,8 @@ namespace GenerateThumbnails
                         _logger.LogInformation("E: " + e.Data);
                     }
                 );
-                //start process
+
+                //start ffmpeg process
                 process.Start();
                 _logger.LogInformation("ffmpeg process started.");
                 process.BeginOutputReadLine();
@@ -182,8 +170,6 @@ namespace GenerateThumbnails
 
                     File.Delete(fileThumbnail);
                     _logger.LogInformation($"Thumbnail deleted from temp folder. {fileThumbnail}");
-
-
                 }
                 _logger.LogInformation("Thumbnail(s) uploaded.");
 
@@ -209,7 +195,6 @@ namespace GenerateThumbnails
                 {"errorText", errorText }
 
             };
-
 
             return new OkObjectResult(
                 response

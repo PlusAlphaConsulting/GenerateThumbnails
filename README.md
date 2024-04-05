@@ -42,7 +42,7 @@ Example JSON input body of the function :
 
 A SAS url is needed for the input and output URLs. The output SAS token should have read/write permissions. A SAS token can be generated from the Azure portal or using the Azure Storage Explorer. I am planning to add the ability to generate SAS tokens in the function itself.
 
-By default, the function generates one 960x540 thumbnail. You can change the number of thumbnails or sizes by adding and modifying the ffmpeg arguments in input body:
+By default, the function generates one 960x540 thumbnail. You can change the number of thumbnails or size by adding and modifying the ffmpeg arguments in the input body:
 
 ```json
 {
