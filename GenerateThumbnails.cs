@@ -9,7 +9,6 @@ using Microsoft.Azure.Functions.Worker;
 using Microsoft.Azure.Functions.Worker.Http;
 using Microsoft.Extensions.Logging;
 using Newtonsoft.Json;
-using Newtonsoft.Json.Linq;
 
 namespace GenerateThumbnails
 {
@@ -44,9 +43,7 @@ namespace GenerateThumbnails
         [Function("GenerateThumbnails")]
         public async Task<IActionResult> Run([HttpTrigger(AuthorizationLevel.Function, "get", "post")] HttpRequestData req, ExecutionContext context)
         {
-            string output = string.Empty;
             bool isSuccessful = true;
-            dynamic ffmpegResult = new JObject();
             string errorText = string.Empty;
             int exitCode = 0;
 
@@ -64,11 +61,11 @@ namespace GenerateThumbnails
 
             var ffmpegArguments = (string)data.ffmpegArguments;
 
-            var inputUrl = (string)data.sasInputUrl;
+            var inputUrl = (string)data.inputUrl;
             if (inputUrl == null)
                 return HelpersBasic.ReturnErrorException(_logger, "Error - please pass inputUrl in the JSON");
 
-            var outputUrl = (string)data.sasOutputUrl;
+            var outputUrl = (string)data.outputUrl;
             if (outputUrl == null)
                 return HelpersBasic.ReturnErrorException(_logger, "Error - please pass outputUrl in the JSON");
 
@@ -130,7 +127,6 @@ namespace GenerateThumbnails
                 await process.WaitForExitAsync();
 
                 exitCode = process.ExitCode;
-                ffmpegResult = output;
 
                 _logger.LogInformation("Thumbnail(s) generated.");
 
@@ -188,17 +184,21 @@ namespace GenerateThumbnails
                 isSuccessful = false;
             }
 
-            var response = new JObject
+            var response = new ProcessResult
             {
-                {"isSuccessful", isSuccessful},
-                {"ffmpegResult",  ffmpegResult},
-                {"errorText", errorText }
-
+                IsSuccessful = isSuccessful,
+                ErrorText = errorText
             };
 
             return new OkObjectResult(
                 response
             );
         }
+    }
+
+    public class ProcessResult
+    {
+        public bool IsSuccessful { get; set; }
+        public string? ErrorText { get; set; }
     }
 }
