@@ -27,14 +27,14 @@ namespace GenerateThumbnails
         //
         // 
         //
-        // This Azure function generates thumbnail(s) from a file file using ffmpeg.
+        // This Azure function generates thumbnail(s) from a video file using ffmpeg.
         //
         /*
         ```c#
         Input :
         {
-            "inputUrl":"",
-            "outputUrl":"",
+            "inputUrl":"https://mysasurlofthesourceblob",
+            "outputUrl":"https://mysasurlofthedestinationcontainer",
             "ffmpegArguments" : " -i {input} -vf thumbnail=n=100,scale=960:540 -frames:v 1 {tempFolder}\\Thumbnail%06d.jpg"  // optional. This parameter generates 1 thumbnail from the first 100 frames in format 960x540
         }
         ```
