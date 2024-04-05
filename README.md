@@ -1,30 +1,46 @@
 ---
-services: media-services,functions
-platforms: dotnetcore
+services: functions
+platforms: dotnet
 author: xpouyat
 ---
 
-# Generates thumbnails for videos using Azure Functions
+# Generates thumbnails for a video using Azure Functions
 
-This Visual Studio 2022 Solution exposes an Azure Function that create thumbnail(s) with ffmpeg. [Azure Functions Premium plan](https://docs.microsoft.com/en-us/azure/azure-functions/functions-premium-plan
-) may be needed if video file is large.
+This Visual Studio 2022 / VS Code Solution exposes an Azure Function that create thumbnail(s) using ffmpeg.
 
-## Fork and download a copy
+## How to publish the function to Azure
+
+### 1. Fork and download a copy
 
 If not already done : fork the repo, download a local copy.
 
-## Ffmpeg
+### 2. Copy ffmpeg to ffmpeg folder
 
-Download ffmpeg from the Internet and copy ffmpeg.exe in \GenerateThumbnails\ffmpeg folder.
-In Visual Studio, open the file properties, "Build action" should be "Content", with "Copy to Output Direcotry" set to "Copy if newer".
+Download ffmpeg from the Internet and copy ffmpeg.exe to \GenerateThumbnails\ffmpeg folder.
+In Visual Studio, open the file properties, "Build action" should be "Content", with "Copy to Output Directory" set to "Copy if newer".
 
-## Publish the function to Azure
+### 3. Publish the function to Azure
 
-Open the solution with Visual Studio and publish the functions to Azure.
-It is recommended to use a **premium plan** to avoid functions timeout (Premium gives you 30 min and a more powerfull host).
+Open the solution with Visual Studio or VS Code and publish the functions to Azure (.NET 8.0 isolated, Windows OS).
+It may be needed to use a **premium plan** to avoid functions timeout (Premium gives you 30 min and a more powerfull host).
 It is possible to [unbound run duration](https://docs.microsoft.com/en-us/azure/azure-functions/functions-premium-plan#longer-run-duration).
 
-JSON input body of the function :
+## Usage
+
+Call the GenerateThumbnails function using POST.
+
+Example JSON input body of the function :
+
+```json
+{
+    "inputUrl":"https://mysasurlofthesourceblob",
+    "outputUrl":"https://mysasurlofthedestinationcontainer"
+}
+```
+
+A SAS url is needed for the input and output URLs. The SAS token should have read/write permissions. A SAS token can be generated from the Azure portal or using the Azure Storage Explorer. I am planning to add the ability to generate SAS tokens in the function itself.
+
+By default, the function generates one 960x540 thumbnail. You can change the number of thumbnails or sizes by adding and modifying the ffmpeg arguments in input body:
 
 ```json
 {
@@ -33,3 +49,11 @@ JSON input body of the function :
     "ffmpegArguments" : " -i {input} -vf thumbnail=n=100,scale=960:540 -frames:v 1 {tempFolder}\\Thumbnail%06d.jpg"
 }
 ```
+
+This parameters will generate 5 thumbnails from the first 100 frames.
+
+```
+" -i {input} -vf thumbnail=n=100,scale=960:540 -frames:v 5 {tempFolder}\\Thumbnail%06d.jpg"
+```
+
+For more information on thumbnail generation, see [this page](https://trac.ffmpeg.org/wiki/Create%20a%20thumbnail%20image%20every%20X%20seconds%20of%20the%20video).
