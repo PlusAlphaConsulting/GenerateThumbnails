@@ -42,7 +42,7 @@ namespace GenerateThumbnails
         */
 
         [Function("GenerateThumbnails")]
-        public IActionResult Run([HttpTrigger(AuthorizationLevel.Function, "get", "post")] HttpRequestData req, ExecutionContext context)
+        public async Task<IActionResult> Run([HttpTrigger(AuthorizationLevel.Function, "get", "post")] HttpRequestData req, ExecutionContext context)
         {
             string output = string.Empty;
             bool isSuccessful = true;
@@ -55,7 +55,7 @@ namespace GenerateThumbnails
             dynamic data;
             try
             {
-                data = JsonConvert.DeserializeObject(new StreamReader(req.Body).ReadToEnd());
+                data = JsonConvert.DeserializeObject(await new StreamReader(req.Body).ReadToEndAsync());
             }
             catch (Exception ex)
             {
@@ -127,7 +127,7 @@ namespace GenerateThumbnails
                 _logger.LogInformation("ffmpeg process started.");
                 process.BeginOutputReadLine();
                 process.BeginErrorReadLine();
-                process.WaitForExit();
+                await process.WaitForExitAsync();
 
                 exitCode = process.ExitCode;
                 ffmpegResult = output;
@@ -156,7 +156,7 @@ namespace GenerateThumbnails
                     {
                         using (FileStream fs = System.IO.File.OpenRead(fileThumbnail))
                         {
-                            blobOutputClient.Upload(fs, true);
+                            await blobOutputClient.UploadAsync(fs, true);
                         }
                     }
                     catch (Exception ex)
