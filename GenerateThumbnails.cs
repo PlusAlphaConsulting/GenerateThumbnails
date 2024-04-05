@@ -41,7 +41,7 @@ namespace GenerateThumbnails
         */
 
         [Function("GenerateThumbnails")]
-        public async Task<IActionResult> Run([HttpTrigger(AuthorizationLevel.Function, "get", "post")] HttpRequestData req, ExecutionContext context)
+        public async Task<IActionResult> Run([HttpTrigger(AuthorizationLevel.Anonymous, "post")] HttpRequestData req, ExecutionContext context)
         {
             bool isSuccessful = true;
             string errorText = string.Empty;
@@ -90,10 +90,16 @@ namespace GenerateThumbnails
                 }
 
                 _logger.LogInformation("Generate thumbnail(s)...");
-                var file = ".\\ffmpeg\\ffmpeg.exe";
+
+                // path to ffmpeg
+                var local_root = Environment.GetEnvironmentVariable("AzureWebJobsScriptRoot");
+                var azure_root = $"{Environment.GetEnvironmentVariable("HOME")}/site/wwwroot";
+                var actual_root = local_root ?? azure_root;
+                var fileFfmpeg = System.IO.Path.Combine(actual_root, "ffmpeg\\ffmpeg.exe");
+                _logger.LogInformation("path to ffmpeg : " + fileFfmpeg);
 
                 Process process = new Process();
-                process.StartInfo.FileName = file;
+                process.StartInfo.FileName = fileFfmpeg;
 
                 process.StartInfo.Arguments = (ffmpegArguments ?? DefaultParameterGenerateThumbnail)
                     .Replace("{input}", "\"" + inputUrl + "\"")
