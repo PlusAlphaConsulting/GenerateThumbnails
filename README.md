@@ -8,7 +8,7 @@ author: xpouyat
 
 This Visual Studio 2022 / VS Code Solution exposes an Azure Function that creates thumbnail(s) using ffmpeg.
 
-Ffmpeg will read directly the video file from Azure blob storage, generate the thumbnail(s) and upload them to a storage container. This function could be used to generate thumbnails with MediaKind MK/IO, for example. It has been tested my MP4 and ISMV files.
+Ffmpeg will read directly the video file from Azure blob storage, generate the thumbnail(s) and upload them to a storage container. This function could be used to generate thumbnails with Azure Media Services or MediaKind MK/IO assets, for example. It has been tested my MP4 and ISMV files as sources.
 
 ## How to publish the function to Azure
 
@@ -55,9 +55,9 @@ Example JSON input body of the function :
 
 If you configured the system managed identity in step 4, you can use "simple" Urls. The Azure function will create SAS Urls internally to read and write the blobs.
 
-If you did not configure manages identity, you need to use a SAS url for the input and output URLs. The output SAS token should have read/write permissions. A SAS token can be generated from the Azure portal or using the Azure Storage Explorer.
+If you did not configure managesd identity, you need to use a SAS url for the input and output URLs. The output SAS token should have read/write permissions. A SAS token can be generated from the Azure portal or the Azure Storage Explorer.
 
-By default, the function generates one 960x540 thumbnail. You can change the number of thumbnails or size by adding and modifying the ffmpeg arguments in the input body:
+By default, the function generates one 960x540 thumbnail. You can change the number of thumbnails or their size by modifying the ffmpeg arguments in the input body:
 
 ```json
 {
@@ -67,7 +67,7 @@ By default, the function generates one 960x540 thumbnail. You can change the num
 }
 ```
 
-This parameter will generate 5 thumbnails from the first 100 frames :
+This parameter below will generate 5 thumbnails from the first 100 frames :
 
 ```
 " -i {input} -vf thumbnail=n=100,scale=960:540 -frames:v 5 {tempFolder}\\Thumbnail%06d.jpg"
