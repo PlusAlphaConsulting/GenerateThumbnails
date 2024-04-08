@@ -8,7 +8,7 @@ author: xpouyat
 
 This Visual Studio 2022 / VS Code Solution exposes an Azure Function that creates thumbnail(s) using ffmpeg.
 
-Ffmpeg will read directly the video file from Azure blob storage, generate the thumbnail(s) and upload them to a storage container. This function could be used to generate thumbnails with MediaKind MK/IO, for example.
+Ffmpeg will read directly the video file from Azure blob storage, generate the thumbnail(s) and upload them to a storage container. This function could be used to generate thumbnails with MediaKind MK/IO, for example. It has been tested my MP4 and ISMV files.
 
 ## How to publish the function to Azure
 
