@@ -73,6 +73,8 @@ This parameter below will generate 5 thumbnails from the first 100 frames :
 " -i {input} -vf thumbnail=n=100,scale=960:540 -frames:v 5 {tempFolder}\\Thumbnail%06d.jpg"
 ```
 
+![5thumbnails](https://github.com/xpouyat/GenerateThumbnails/assets/8104205/7a043cb2-8911-4418-86f2-02d34de46452)
+
 This parameter below will generate a single sprite file (tile) with a thumbnail every 30 frames :
 
 ```
