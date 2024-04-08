@@ -2,7 +2,11 @@
 // Licensed under the MIT License.
 
 using System.Diagnostics;
+using System.Security.Policy;
+using Azure.Identity;
+using Azure.Storage;
 using Azure.Storage.Blobs;
+using Azure.Storage.Sas;
 using GenerateThumbnails.Helpers;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Azure.Functions.Worker;
@@ -80,10 +84,82 @@ namespace GenerateThumbnails
                 // create temp folder
                 Directory.CreateDirectory(tempFolder);
 
-                string inputFileName = Path.GetFileName(new Uri(inputUrl).LocalPath);
+                var inputUri = new Uri(inputUrl);
+                BlobUriBuilder inputBlobUriBuilder = new BlobUriBuilder(inputUri);
+
+                string inputFileName = Path.GetFileName(inputUri.LocalPath);
                 string pathLocalInput = Path.Combine(tempFolder, inputFileName);
 
-                string outputFileName = Path.GetFileName(new Uri(outputUrl).LocalPath);
+
+
+                // GENERATE SAS FOR INPUT IF NEEDED
+                if (!inputUrl.Contains("&sig="))
+                {
+                    // generate a SAS token for the input URL using managed entity
+                    var storageAccountUriString = inputUri.Scheme + "://" + inputUri.Host;
+                    // Create a DefaultAzureCredential to authenticate using managed identity
+                    var credential = new DefaultAzureCredential(includeInteractiveCredentials: true);
+                    // Create a BlobServiceClient
+                    var blobServiceClient = new BlobServiceClient(new Uri(storageAccountUriString), credential);
+
+                    var blobContainerClient = blobServiceClient.GetBlobContainerClient(inputBlobUriBuilder.BlobContainerName);
+                    var blobClient = blobContainerClient.GetBlobClient(inputBlobUriBuilder.BlobName);
+
+                    // Get a user delegation key for the Blob service that's valid for 2 hours.
+                    var userDelegationKey = blobServiceClient.GetUserDelegationKey(DateTimeOffset.UtcNow, DateTimeOffset.UtcNow.AddHours(1));
+
+                    // Create a BlobSasBuilder
+                    var sasBuilder = new BlobSasBuilder()
+                    {
+                        BlobContainerName = blobContainerClient.Name,
+                        BlobName = blobClient.Name,
+                        Resource = "b",
+                        StartsOn = DateTimeOffset.UtcNow,
+                        ExpiresOn = DateTimeOffset.UtcNow.AddHours(1),
+                    };
+
+                    sasBuilder.SetPermissions(BlobSasPermissions.Read); // Read permissions
+                    inputBlobUriBuilder.Sas = sasBuilder.ToSasQueryParameters(userDelegationKey, blobServiceClient.AccountName);
+                    inputUri = inputBlobUriBuilder.ToUri();
+                    _logger.LogInformation($"SAS : {inputUri.ToString()}");
+                }
+
+                var outputUri = new Uri(outputUrl);
+                BlobUriBuilder outputBlobUriBuilder = new BlobUriBuilder(outputUri);
+
+
+                // GENERATE SAS FOR OUTPUT IF NEEDED
+                if (!outputUrl.Contains("&sig="))
+                {
+                    // generate a SAS token for the input URL using managed entity
+                    var storageAccountUriString = outputUri.Scheme + "://" + outputUri.Host;
+                    // Create a DefaultAzureCredential to authenticate using managed identity
+                    var credential = new DefaultAzureCredential(includeInteractiveCredentials: true);
+                    // Create a BlobServiceClient
+                    var blobServiceClient = new BlobServiceClient(new Uri(storageAccountUriString), credential);
+
+                    var blobContainerClient = blobServiceClient.GetBlobContainerClient(outputBlobUriBuilder.BlobContainerName);
+                    var blobClient = blobContainerClient.GetBlobClient("thumbnail.jpg");
+
+                    // Get a user delegation key for the Blob service that's valid for 2 hours.
+                    var userDelegationKey = blobServiceClient.GetUserDelegationKey(DateTimeOffset.UtcNow, DateTimeOffset.UtcNow.AddHours(1));
+
+                    // Create a BlobSasBuilder
+                    var sasBuilder = new BlobSasBuilder()
+                    {
+                        BlobContainerName = blobContainerClient.Name,
+                        BlobName = null,
+                        Resource = "b",
+                        StartsOn = DateTimeOffset.UtcNow,
+                        ExpiresOn = DateTimeOffset.UtcNow.AddHours(1)
+                    };
+
+                    sasBuilder.SetPermissions(BlobSasPermissions.Write); // Write permissions
+                    outputBlobUriBuilder.Sas = sasBuilder.ToSasQueryParameters(userDelegationKey, blobServiceClient.AccountName);
+                    _logger.LogInformation($"Output SAS : {outputBlobUriBuilder.ToUri().ToString()}");
+                    outputUri = outputBlobUriBuilder.ToUri();
+                }
+
 
                 foreach (DriveInfo drive in DriveInfo.GetDrives().Where(d => d.IsReady))
                 {
@@ -103,7 +179,7 @@ namespace GenerateThumbnails
                 process.StartInfo.FileName = fileFfmpeg;
 
                 process.StartInfo.Arguments = (ffmpegArguments ?? DefaultParameterGenerateThumbnail)
-                    .Replace("{input}", "\"" + inputUrl + "\"")
+                    .Replace("{input}", "\"" + inputUri.ToString() + "\"")
                     .Replace("{tempFolder}", tempFolder)
                     .Replace("'", "\"");
 
@@ -137,10 +213,8 @@ namespace GenerateThumbnails
 
                 _logger.LogInformation("Thumbnail(s) generated.");
 
-                var sasOutputUri = new Uri(outputUrl);
-
                 // Create a BlobContainerClient from the SAS URL
-                BlobContainerClient containerOutputClient = new BlobContainerClient(sasOutputUri);
+                BlobContainerClient containerOutputClient = new BlobContainerClient(outputUri);
 
                 // parse all files from the temp folder
                 var filesThumbnails = Directory.GetFiles(tempFolder, "*.*");
