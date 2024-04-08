@@ -73,4 +73,14 @@ This parameter below will generate 5 thumbnails from the first 100 frames :
 " -i {input} -vf thumbnail=n=100,scale=960:540 -frames:v 5 {tempFolder}\\Thumbnail%06d.jpg"
 ```
 
-For more information about thumbnail generation, see [this page](https://trac.ffmpeg.org/wiki/Create%20a%20thumbnail%20image%20every%20X%20seconds%20of%20the%20video).
+This parameter below will generate a single sprite file (tile) with a thumbnail every 30 frames :
+
+```
+" -i {input} -vf select='not(mod(n\\,30))',scale=160:90,tile -frames:v 1 preview.jpg"
+```
+
+![preview](https://github.com/xpouyat/GenerateThumbnails/assets/8104205/9799c7d6-ff3b-4d70-b94a-364aa5a82265)
+
+Please escape correctly the backslashes and other special characters in the JSON string.
+
+For more information about thumbnail generation, see [this page](https://trac.ffmpeg.org/wiki/Create%20a%20thumbnail%20image%20every%20X%20seconds%20of%20the%20video) and [this page for sprite encoding](https://www.ffmpegbyexample.com/examples/90permbg/generate_tile_thumbnail_picture_every_30_frames_of_video/).

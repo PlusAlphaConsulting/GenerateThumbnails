@@ -127,6 +127,7 @@ namespace GenerateThumbnails
 
                 Process process = new Process();
                 process.StartInfo.FileName = fileFfmpeg;
+                process.StartInfo.WorkingDirectory = tempFolder;
 
                 process.StartInfo.Arguments = (ffmpegArguments ?? DefaultParameterGenerateThumbnail)
                     .Replace("{input}", "\"" + inputUri.ToString() + "\"")
