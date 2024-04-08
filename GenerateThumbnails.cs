@@ -2,9 +2,7 @@
 // Licensed under the MIT License.
 
 using System.Diagnostics;
-using System.Security.Policy;
 using Azure.Identity;
-using Azure.Storage;
 using Azure.Storage.Blobs;
 using Azure.Storage.Sas;
 using GenerateThumbnails.Helpers;
@@ -33,8 +31,8 @@ namespace GenerateThumbnails
         /*
         Input :
         {
-            "inputUrl":"https://mysasurlofthesourceblob",
-            "outputUrl":"https://mysasurlofthedestinationcontainer",
+            "inputUrl":"https://myurlofthesourceblob",
+            "outputUrl":"https://myurlofthedestinationcontainer",
             "ffmpegArguments" : " -i {input} -vf thumbnail=n=100,scale=960:540 -frames:v 1 {tempFolder}\\Thumbnail%06d.jpg"  // optional. This parameter generates 1 thumbnail from the first 100 frames in format 960x540
         }
         */
@@ -46,7 +44,7 @@ namespace GenerateThumbnails
         /// <param name="context"></param>
         /// <returns></returns>
         [Function("GenerateThumbnails")]
-        public async Task<IActionResult> Run([HttpTrigger(AuthorizationLevel.Anonymous, "post")] HttpRequestData req, ExecutionContext context)
+        public async Task<IActionResult> Run([HttpTrigger(AuthorizationLevel.Function, "post")] HttpRequestData req, ExecutionContext context)
         {
             bool isSuccessful = true;
             string errorText = string.Empty;
@@ -92,71 +90,23 @@ namespace GenerateThumbnails
 
 
 
-                // GENERATE SAS FOR INPUT IF NEEDED
+                // The function will generate a SAS token for the input URL if it doesn't already have one
+                // Managed identity is used to authenticate to the storage account
                 if (!inputUrl.Contains("&sig="))
                 {
-                    // generate a SAS token for the input URL using managed entity
-                    var storageAccountUriString = inputUri.Scheme + "://" + inputUri.Host;
-                    // Create a DefaultAzureCredential to authenticate using managed identity
-                    var credential = new DefaultAzureCredential(includeInteractiveCredentials: true);
-                    // Create a BlobServiceClient
-                    var blobServiceClient = new BlobServiceClient(new Uri(storageAccountUriString), credential);
-
-                    var blobContainerClient = blobServiceClient.GetBlobContainerClient(inputBlobUriBuilder.BlobContainerName);
-                    var blobClient = blobContainerClient.GetBlobClient(inputBlobUriBuilder.BlobName);
-
-                    // Get a user delegation key for the Blob service that's valid for 2 hours.
-                    var userDelegationKey = blobServiceClient.GetUserDelegationKey(DateTimeOffset.UtcNow, DateTimeOffset.UtcNow.AddHours(1));
-
-                    // Create a BlobSasBuilder
-                    var sasBuilder = new BlobSasBuilder()
-                    {
-                        BlobContainerName = blobContainerClient.Name,
-                        BlobName = blobClient.Name,
-                        Resource = "b",
-                        StartsOn = DateTimeOffset.UtcNow,
-                        ExpiresOn = DateTimeOffset.UtcNow.AddHours(1),
-                    };
-
-                    sasBuilder.SetPermissions(BlobSasPermissions.Read); // Read permissions
-                    inputBlobUriBuilder.Sas = sasBuilder.ToSasQueryParameters(userDelegationKey, blobServiceClient.AccountName);
+                    GenerateSAS(inputUri, inputBlobUriBuilder, BlobSasPermissions.Read);
                     inputUri = inputBlobUriBuilder.ToUri();
-                    _logger.LogInformation($"SAS : {inputUri.ToString()}");
                 }
 
                 var outputUri = new Uri(outputUrl);
                 BlobUriBuilder outputBlobUriBuilder = new BlobUriBuilder(outputUri);
 
 
-                // GENERATE SAS FOR OUTPUT IF NEEDED
+                // The function will generate a SAS token for the input URL if it doesn't already have one
+                // Managed identity is used to authenticate to the storage account
                 if (!outputUrl.Contains("&sig="))
                 {
-                    // generate a SAS token for the input URL using managed entity
-                    var storageAccountUriString = outputUri.Scheme + "://" + outputUri.Host;
-                    // Create a DefaultAzureCredential to authenticate using managed identity
-                    var credential = new DefaultAzureCredential(includeInteractiveCredentials: true);
-                    // Create a BlobServiceClient
-                    var blobServiceClient = new BlobServiceClient(new Uri(storageAccountUriString), credential);
-
-                    var blobContainerClient = blobServiceClient.GetBlobContainerClient(outputBlobUriBuilder.BlobContainerName);
-                    var blobClient = blobContainerClient.GetBlobClient("thumbnail.jpg");
-
-                    // Get a user delegation key for the Blob service that's valid for 2 hours.
-                    var userDelegationKey = blobServiceClient.GetUserDelegationKey(DateTimeOffset.UtcNow, DateTimeOffset.UtcNow.AddHours(1));
-
-                    // Create a BlobSasBuilder
-                    var sasBuilder = new BlobSasBuilder()
-                    {
-                        BlobContainerName = blobContainerClient.Name,
-                        BlobName = null,
-                        Resource = "b",
-                        StartsOn = DateTimeOffset.UtcNow,
-                        ExpiresOn = DateTimeOffset.UtcNow.AddHours(1)
-                    };
-
-                    sasBuilder.SetPermissions(BlobSasPermissions.Write); // Write permissions
-                    outputBlobUriBuilder.Sas = sasBuilder.ToSasQueryParameters(userDelegationKey, blobServiceClient.AccountName);
-                    _logger.LogInformation($"Output SAS : {outputBlobUriBuilder.ToUri().ToString()}");
+                    GenerateSAS(outputUri, outputBlobUriBuilder, BlobSasPermissions.Write);
                     outputUri = outputBlobUriBuilder.ToUri();
                 }
 
@@ -274,6 +224,35 @@ namespace GenerateThumbnails
             return new OkObjectResult(
                 response
             );
+
+            static void GenerateSAS(Uri inputUri, BlobUriBuilder inputBlobUriBuilder, BlobSasPermissions sasPermissions)
+            {
+                // generate a SAS token for the input URL using managed entity
+                var storageAccountUriString = inputUri.Scheme + "://" + inputUri.Host;
+                // Create a DefaultAzureCredential to authenticate using managed identity
+                var credential = new DefaultAzureCredential(includeInteractiveCredentials: true);
+                // Create a BlobServiceClient
+                var blobServiceClient = new BlobServiceClient(new Uri(storageAccountUriString), credential);
+
+                var blobContainerClient = blobServiceClient.GetBlobContainerClient(inputBlobUriBuilder.BlobContainerName);
+                var blobClient = blobContainerClient.GetBlobClient(inputBlobUriBuilder.BlobName);
+
+                // Get a user delegation key for the Blob service that's valid for 1 hours.
+                var userDelegationKey = blobServiceClient.GetUserDelegationKey(DateTimeOffset.UtcNow, DateTimeOffset.UtcNow.AddHours(1));
+
+                // Create a BlobSasBuilder
+                var sasBuilder = new BlobSasBuilder()
+                {
+                    BlobContainerName = blobContainerClient.Name,
+                    BlobName = blobClient.Name,
+                    Resource = "b",
+                    StartsOn = DateTimeOffset.UtcNow,
+                    ExpiresOn = DateTimeOffset.UtcNow.AddHours(1),
+                };
+
+                sasBuilder.SetPermissions(sasPermissions); // Read permissions
+                inputBlobUriBuilder.Sas = sasBuilder.ToSasQueryParameters(userDelegationKey, blobServiceClient.AccountName);
+            }
         }
     }
 

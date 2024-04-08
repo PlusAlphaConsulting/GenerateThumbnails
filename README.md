@@ -27,27 +27,42 @@ Open the solution with Visual Studio or VS Code and publish the functions to Azu
 It may be needed to use a **premium plan** to avoid functions timeout (Premium gives you 30 min and a more powerfull host).
 It is possible to [unbound run duration](https://docs.microsoft.com/en-us/azure/azure-functions/functions-premium-plan#longer-run-duration).
 
+### 4. Recommended : Enable Managed Identity on the Azure Function and give it access to the storage account
+
+To avoid using SAS urls for the input file and the output container, you can enable Managed Identity on the Azure Function and give it access to the storage account.
+
+To do this:
+
+- go to the Azure portal, select the Azure Function
+- then go to "Identity" and enable the system-assigned identity
+- Select "Azure role assignments" in the same page, and "Add role assignment":
+  - Scope : Storage
+  - Resource : the storage account(s) used by the function to read the video files and write the thumbnails
+  - Role : "Storage Blob Data Contributor".
+
 ## Usage
 
-Call the GenerateThumbnails function using POST.
+Call the GenerateThumbnails function using POST and the function key.
 
 Example JSON input body of the function :
 
 ```json
 {
-    "inputUrl":"https://mysasurlofthesourceblob",
-    "outputUrl":"https://mysasurlofthedestinationcontainer"
+    "inputUrl":"https://storageaccount.blob.core.windows.net/asset-abe0685b/video.mp4",
+    "outputUrl":"https://storageaccount.blob.core.windows.net/asset-abe0685b"
 }
 ```
 
-A SAS url is needed for the input and output URLs. The output SAS token should have read/write permissions. A SAS token can be generated from the Azure portal or using the Azure Storage Explorer. I am planning to add the ability to generate SAS tokens in the function itself.
+If you configured the system managed identity in step 4, you can use "simple" Urls. The Azure function will create SAS Urls internally to read and write the blobs.
+
+If you did not configure manages identity, you need to use a SAS url for the input and output URLs. The output SAS token should have read/write permissions. A SAS token can be generated from the Azure portal or using the Azure Storage Explorer.
 
 By default, the function generates one 960x540 thumbnail. You can change the number of thumbnails or size by adding and modifying the ffmpeg arguments in the input body:
 
 ```json
 {
-    "inputUrl":"https://mysasurlofthesourceblob",
-    "outputUrl":"https://mysasurlofthedestinationcontainer",
+    "inputUrl":"https://urlofthesourceblob",
+    "outputUrl":"https://urlofthedestinationcontainer",
     "ffmpegArguments" : " -i {input} -vf thumbnail=n=100,scale=960:540 -frames:v 1 {tempFolder}\\Thumbnail%06d.jpg"
 }
 ```
